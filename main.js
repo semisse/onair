@@ -134,7 +134,9 @@ function openAbout() {
     backgroundColor: '#2b2b2b',
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
-  aboutWindow.loadFile(path.join(__dirname, 'windows', 'about.html'));
+  aboutWindow.loadFile(path.join(__dirname, 'windows', 'about.html'), {
+    query: { version: app.getVersion() },
+  });
   aboutWindow.on('closed', () => { aboutWindow = null; });
 }
 
