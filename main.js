@@ -6,14 +6,14 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const ICON_FRAMES = Array.from({ length: 16 }, (_, i) =>
-  path.join(__dirname, `icon-on-${i}.png`)
+  path.join(__dirname, 'assets', `icon-on-${i}.png`)
 );
-const ICON_OFF  = path.join(__dirname, 'icon-off.png');
-const ICON_TEAL = path.join(__dirname, 'icon-teal.png');
+const ICON_OFF  = path.join(__dirname, 'assets', 'icon-off.png');
+const ICON_TEAL = path.join(__dirname, 'assets', 'icon-teal.png');
 const { execSync, spawnSync } = require('child_process');
 const http = require('http');
 
-const MIC_BINARY = path.join(__dirname, 'check-mic');
+const MIC_BINARY = path.join(__dirname, 'native', 'check-mic');
 const POLL_INTERVAL = 5000;
 const ESP32_IP = '192.168.1.100'; // configurar com o IP do ESP32
 
@@ -134,7 +134,7 @@ function openAbout() {
     backgroundColor: '#2b2b2b',
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
-  aboutWindow.loadFile(path.join(__dirname, 'about.html'));
+  aboutWindow.loadFile(path.join(__dirname, 'windows', 'about.html'));
   aboutWindow.on('closed', () => { aboutWindow = null; });
 }
 

@@ -2,7 +2,7 @@
 
 A macOS menu bar app that detects when you're on a Microsoft Teams call and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi.
 
-![off air](icon-off.png) Idle &nbsp;·&nbsp; ![on air](icon-on.png) On a call
+![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on.png) On a call
 
 ---
 
@@ -65,8 +65,8 @@ npm install
 The app uses a small Swift binary to query CoreAudio — it only needs to be compiled once.
 
 ```bash
-swiftc check-mic.swift -o check-mic
-chmod +x check-mic
+swiftc native/check-mic.swift -o native/check-mic
+chmod +x native/check-mic
 ```
 
 ### Configure
