@@ -1,25 +1,45 @@
 {
   "name": "onair",
   "version": "1.0.0",
-  "description": "",
+  "description": "macOS menu bar app that turns on an ON AIR sign when you're on a Teams call",
   "main": "main.js",
+  "author": "Today We Dream Tomorrow We Build",
+  "license": "MIT",
+  "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron ."
+    "dev": "NODE_ENV=development electron .",
+    "build:native": "bash scripts/build-native.sh",
+    "build:icons": "bash scripts/build-icons.sh",
+    "build": "npm run build:native && npm run build:icons && electron-builder",
+    "dist": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "build": {
+    "appId": "com.todaywedream.onair",
+    "productName": "On Air",
+    "files": [
+      "main.js",
+      "windows/**",
+      "assets/**",
+      "native/check-mic",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "icon": "assets/icon.icns"
+    },
+    "dmg": {
+      "title": "On Air"
+    }
+  },
   "devDependencies": {
     "electron": "^41.0.3",
-    "electron-reload": "^2.0.0-alpha.1"
+    "electron-builder": "^26.8.1",
+    "electron-reload": "^2.0.0-alpha.1",
+    "sharp": "^0.34.5"
   },
   "dependencies": {
-    "canvas-sketch": "^0.7.7",
-    "canvas-sketch-util": "^1.10.0",
-    "electron-store": "^11.0.2",
-    "seed-random": "^2.2.0",
-    "sharp": "^0.34.5"
+    "electron-store": "^11.0.2"
   }
 }

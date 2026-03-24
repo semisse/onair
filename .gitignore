@@ -4,3 +4,5 @@ out/
 *.dmg
 *.zip
 .DS_Store
+assets/icon.iconset/
+assets/icon.icns
