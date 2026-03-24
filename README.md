@@ -2,7 +2,7 @@
 
 A macOS menu bar app that detects when you're on a Microsoft Teams call and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi.
 
-![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on.png) On a call
+![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) On a call
 
 ---
 
