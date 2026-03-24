@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>On Air</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #2b2b2b;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 32px 40px;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    img.logo {
+      width: 88px;
+      height: 88px;
+      object-fit: contain;
+      margin-bottom: 16px;
+    }
+
+    p.description {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #c0c0c0;
+      max-width: 300px;
+      margin-bottom: 12px;
+    }
+
+    p.version {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    p.credits {
+      font-size: 11px;
+      color: #666;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <img class="logo" src="icon.png" alt="On Air" />
+
+  <h1>On Air</h1>
+
+  <p class="description">
+    On Air is a macOS little app that detects when you're on a Microsoft Teams call and automatically activates a physical ON AIR LED sign via an ESP32 over Wi‑Fi.
+  </p>
+
+  <p class="version">Version 1.0 &nbsp;·&nbsp; March 24, 2026</p>
+
+  <p class="credits">we ❤️ open source</p>
+  <p class="credits">by Today We Dream Tomorrow We Build ™</p>
+</body>
+</html>

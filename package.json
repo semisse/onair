@@ -1,0 +1,25 @@
+{
+  "name": "onair",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^41.0.3",
+    "electron-reload": "^2.0.0-alpha.1"
+  },
+  "dependencies": {
+    "canvas-sketch": "^0.7.7",
+    "canvas-sketch-util": "^1.10.0",
+    "electron-store": "^11.0.2",
+    "seed-random": "^2.2.0",
+    "sharp": "^0.34.5"
+  }
+}
