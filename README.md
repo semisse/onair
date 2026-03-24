@@ -1,6 +1,6 @@
 # On Air
 
-A macOS menu bar app that detects when you're on a Microsoft Teams call and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi.
+A macOS menu bar app that detects when your microphone is in use and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi. Works with any app — Teams, Zoom, Google Meet, or anything else that uses the mic.
 
 ![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) On a call
 
@@ -8,12 +8,9 @@ A macOS menu bar app that detects when you're on a Microsoft Teams call and auto
 
 ## How it works
 
-Every 5 seconds the app checks two conditions:
+The app runs a persistent native process that registers a CoreAudio `AudioObjectAddPropertyListener` on the default input device — the same signal that triggers the orange mic indicator in the macOS menu bar.
 
-1. **Teams is running** — scans the process list for `Microsoft Teams.app/Contents/MacOS/MSTeams`
-2. **Microphone is in use** — queries CoreAudio's `kAudioDevicePropertyDeviceIsRunningSomewhere` on the default input device (the same signal that triggers the orange mic indicator in the macOS menu bar)
-
-When both are true it sends `POST /on` to the ESP32. When either stops it sends `POST /off`. The ESP32 drives a transistor that switches the LED sign's power.
+When the mic activates it sends `POST /on` to the ESP32. When it stops it sends `POST /off`. The ESP32 drives a transistor that switches the LED sign's power. The response is instantaneous with zero CPU overhead in idle.
 
 The menu bar icon animates while you're on a call. You can also force the sign on or off manually via the context menu, independently of call detection.
 

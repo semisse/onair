@@ -1,17 +1,12 @@
 import CoreAudio
-import AppKit
+import Foundation
 
-// Global state — accessible from C-style CoreAudio callback (no captures allowed)
-var gTeamsRunning = false
-var gMicInUse     = false
-var gDeviceID     = AudioDeviceID(kAudioObjectUnknown)
+var gDeviceID = AudioDeviceID(kAudioObjectUnknown)
 
 func emit() {
-    print(gTeamsRunning && gMicInUse ? "in_call" : "not_in_call")
+    print(readMicInUse(deviceID: gDeviceID) ? "in_call" : "not_in_call")
     fflush(stdout)
 }
-
-// MARK: - CoreAudio helpers
 
 func defaultInputDevice() -> AudioDeviceID {
     var id   = AudioDeviceID(kAudioObjectUnknown)
@@ -36,21 +31,7 @@ func readMicInUse(deviceID: AudioDeviceID) -> Bool {
     return value > 0
 }
 
-// MARK: - Teams detection
-
-func isTeams(_ app: NSRunningApplication) -> Bool {
-    app.bundleIdentifier == "com.microsoft.teams2" ||
-    app.bundleIdentifier == "com.microsoft.teams"  ||
-    app.executableURL?.lastPathComponent == "MSTeams"
-}
-
-// MARK: - Initial state
-
-gDeviceID     = defaultInputDevice()
-gMicInUse     = readMicInUse(deviceID: gDeviceID)
-gTeamsRunning = NSWorkspace.shared.runningApplications.contains { isTeams($0) }
-
-// MARK: - CoreAudio listener (C callback — no variable captures)
+gDeviceID = defaultInputDevice()
 
 var micAddr = AudioObjectPropertyAddress(
     mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
@@ -58,34 +39,9 @@ var micAddr = AudioObjectPropertyAddress(
     mElement:  kAudioObjectPropertyElementMain)
 
 AudioObjectAddPropertyListener(gDeviceID, &micAddr, { _, _, _, _ -> OSStatus in
-    DispatchQueue.main.async {
-        gMicInUse = readMicInUse(deviceID: gDeviceID)
-        emit()
-    }
+    DispatchQueue.main.async { emit() }
     return noErr
 }, nil)
-
-// MARK: - NSWorkspace notifications
-
-let nc = NSWorkspace.shared.notificationCenter
-
-nc.addObserver(forName: NSWorkspace.didLaunchApplicationNotification,
-               object: nil, queue: .main) { note in
-    guard let a = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-          isTeams(a) else { return }
-    gTeamsRunning = true
-    emit()
-}
-
-nc.addObserver(forName: NSWorkspace.didTerminateApplicationNotification,
-               object: nil, queue: .main) { note in
-    guard let a = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-          isTeams(a) else { return }
-    gTeamsRunning = false
-    emit()
-}
-
-// MARK: - Emit initial state and run forever
 
 emit()
 RunLoop.main.run()
