@@ -1,5 +1,7 @@
 const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+const http = require('http');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, { electron: process.execPath });
@@ -10,47 +12,23 @@ const ICON_FRAMES = Array.from({ length: 16 }, (_, i) =>
 );
 const ICON_OFF  = path.join(__dirname, 'assets', 'icon-off.png');
 const ICON_TEAL = path.join(__dirname, 'assets', 'icon-teal.png');
-const { execSync, spawnSync } = require('child_process');
-const http = require('http');
 
-const MIC_BINARY = path.join(__dirname, 'native', 'check-mic');
-const POLL_INTERVAL = 5000;
-const ESP32_IP = '192.168.1.100'; // configurar com o IP do ESP32
+const DETECTOR  = path.join(__dirname, 'native', 'check-mic');
+const ESP32_IP  = '192.168.1.100'; // configurar com o IP do ESP32
 
-let tray = null;
-let aboutWindow = null;
-let lastState = null;
+let tray          = null;
+let aboutWindow   = null;
+let lastState     = null;
+let detectorState = false; // último estado reportado pelo detector
 let manualOverride = null; // null = automático, true/false = forçado
-let animInterval = null;
-let animFrame = 0;
-
-// --- Detection ---
-
-function isTeamsRunning() {
-  const output = spawnSync('ps', ['aux'], { encoding: 'utf8' }).stdout;
-  return output.split('\n').some(l =>
-    l.includes('Microsoft Teams.app/Contents/MacOS/MSTeams')
-  );
-}
-
-function isMicInUse() {
-  try {
-    const result = execSync(MIC_BINARY, { encoding: 'utf8' }).trim();
-    return result === 'in_use';
-  } catch {
-    return false;
-  }
-}
-
-function isInCall() {
-  return isTeamsRunning() && isMicInUse();
-}
+let animInterval  = null;
+let animFrame     = 0;
 
 // --- ESP32 ---
 
 function sendSignal(on) {
-  const path = on ? '/on' : '/off';
-  const req = http.request({ host: ESP32_IP, port: 80, path, method: 'POST' });
+  const reqPath = on ? '/on' : '/off';
+  const req = http.request({ host: ESP32_IP, port: 80, path: reqPath, method: 'POST' });
   req.on('error', () => {}); // silencioso — ESP32 pode não estar disponível ainda
   req.end();
 }
@@ -111,7 +89,7 @@ function buildMenu() {
       label: 'Auto',
       icon: menuIcon(ICON_OFF),
       enabled: manualOverride !== null,
-      click: () => { manualOverride = null; applyState(isInCall()); updateTray(lastState); tray.setContextMenu(buildMenu()); }
+      click: () => { manualOverride = null; applyState(detectorState); updateTray(lastState); tray.setContextMenu(buildMenu()); }
     },
     { type: 'separator' },
     { label: 'About...', click: () => openAbout() },
@@ -151,11 +129,23 @@ function applyState(inCall) {
   }
 }
 
-// --- Poll loop ---
+// --- Detector (event-driven, persistent process) ---
 
-function poll() {
-  if (manualOverride !== null) return; // override ativo — ignorar detecção
-  applyState(isInCall());
+function startDetector() {
+  const detector = spawn(DETECTOR);
+
+  detector.stdout.on('data', (data) => {
+    const lines = data.toString().trim().split('\n');
+    for (const line of lines) {
+      detectorState = line === 'in_call';
+      if (manualOverride === null) applyState(detectorState);
+    }
+  });
+
+  detector.on('exit', () => {
+    console.log('Detector terminou — a reiniciar em 2s...');
+    setTimeout(startDetector, 2000);
+  });
 }
 
 // --- App lifecycle ---
@@ -167,8 +157,7 @@ app.whenReady().then(() => {
   tray.setContextMenu(buildMenu());
   updateTray(false);
 
-  poll();
-  setInterval(poll, POLL_INTERVAL);
+  startDetector();
 });
 
 app.on('window-all-closed', () => {}); // manter vivo sem janelas
