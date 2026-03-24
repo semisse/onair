@@ -55,7 +55,7 @@ The sign's original battery box is removed. The ESP32 is powered via USB and sup
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/onair
+git clone https://github.com/semisse/onair
 cd onair
 npm install
 ```
