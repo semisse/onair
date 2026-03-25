@@ -13,6 +13,7 @@
     "build:icons": "bash scripts/build-icons.sh",
     "build": "npm run build:native && npm run build:icons && electron-builder",
     "dist": "npm run build",
+    "test": "jest",
     "postversion": "git push && git push --follow-tags"
   },
   "build": {
@@ -52,6 +53,7 @@
     "electron": "^41.0.3",
     "electron-builder": "^26.8.1",
     "electron-reload": "^2.0.0-alpha.1",
+    "jest": "^30.3.0",
     "sharp": "^0.34.5"
   },
   "dependencies": {

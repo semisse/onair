@@ -2,6 +2,7 @@ const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
+const { OnAirState } = require('./src/state');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, { electron: process.execPath });
@@ -18,13 +19,16 @@ const DETECTOR  = app.isPackaged
   : path.join(__dirname, 'native', 'check-mic');
 const ESP32_IP  = '192.168.1.100'; // configurar com o IP do ESP32
 
-let tray          = null;
-let aboutWindow   = null;
-let lastState     = null;
-let detectorState = false; // último estado reportado pelo detector
-let manualOverride = null; // null = automático, true/false = forçado
-let animInterval  = null;
-let animFrame     = 0;
+let tray         = null;
+let aboutWindow  = null;
+let animInterval = null;
+let animFrame    = 0;
+
+const state = new OnAirState({ onSignal: (inCall) => {
+  sendSignal(inCall);
+  updateTray(inCall);
+  console.log(inCall ? 'Em chamada — sinal ON' : 'Fora de chamada — sinal OFF');
+} });
 
 // --- ESP32 ---
 
@@ -64,9 +68,9 @@ function updateTray(inCall) {
     startAnimation();
   } else {
     stopAnimation();
-    tray.setImage(loadRetina(manualOverride === null ? ICON_OFF : ICON_TEAL));
+    tray.setImage(loadRetina(state.manualOverride === null ? ICON_OFF : ICON_TEAL));
   }
-  tray.setToolTip(inCall ? 'On Air' : manualOverride === null ? 'Auto' : 'Off Air');
+  tray.setToolTip(inCall ? 'On Air' : state.manualOverride === null ? 'Auto' : 'Off Air');
 }
 
 function menuIcon(filePath) {
@@ -80,18 +84,18 @@ function buildMenu() {
     {
       label: 'Turn On Air',
       icon: menuIcon(ICON_FRAMES[0]),
-      click: () => { manualOverride = true;  applyState(true);  tray.setContextMenu(buildMenu()); }
+      click: () => { state.setOverride(true);  tray.setContextMenu(buildMenu()); }
     },
     {
       label: 'Turn Off Air',
       icon: menuIcon(ICON_TEAL),
-      click: () => { manualOverride = false; applyState(false); tray.setContextMenu(buildMenu()); }
+      click: () => { state.setOverride(false); tray.setContextMenu(buildMenu()); }
     },
     {
       label: 'Auto',
       icon: menuIcon(ICON_OFF),
-      enabled: manualOverride !== null,
-      click: () => { manualOverride = null; applyState(detectorState); updateTray(lastState); tray.setContextMenu(buildMenu()); }
+      enabled: state.manualOverride !== null,
+      click: () => { state.setOverride(null);  tray.setContextMenu(buildMenu()); }
     },
     { type: 'separator' },
     { label: 'About...', click: () => openAbout() },
@@ -120,28 +124,13 @@ function openAbout() {
   aboutWindow.on('closed', () => { aboutWindow = null; });
 }
 
-// --- State ---
-
-function applyState(inCall) {
-  if (inCall !== lastState) {
-    lastState = inCall;
-    sendSignal(inCall);
-    updateTray(inCall);
-    console.log(inCall ? 'Em chamada — sinal ON' : 'Fora de chamada — sinal OFF');
-  }
-}
-
 // --- Detector (event-driven, persistent process) ---
 
 function startDetector() {
   const detector = spawn(DETECTOR);
 
   detector.stdout.on('data', (data) => {
-    const lines = data.toString().trim().split('\n');
-    for (const line of lines) {
-      detectorState = line === 'in_call';
-      if (manualOverride === null) applyState(detectorState);
-    }
+    data.toString().trim().split('\n').forEach(line => state.onDetectorEvent(line));
   });
 
   detector.on('exit', () => {
