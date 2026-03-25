@@ -1,8 +1,10 @@
-const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
+const fs = require('fs');
 const { OnAirState } = require('./src/state');
+const { testConnection, scanNetwork } = require('./src/discovery');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, { electron: process.execPath });
@@ -14,15 +16,29 @@ const ICON_FRAMES = Array.from({ length: 16 }, (_, i) =>
 const ICON_OFF  = path.join(__dirname, 'assets', 'icon-off.png');
 const ICON_TEAL = path.join(__dirname, 'assets', 'icon-teal.png');
 
-const DETECTOR  = app.isPackaged
+const DETECTOR = app.isPackaged
   ? path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'check-mic')
   : path.join(__dirname, 'native', 'check-mic');
-const ESP32_IP  = '192.168.1.100'; // configurar com o IP do ESP32
 
-let tray         = null;
-let aboutWindow  = null;
-let animInterval = null;
-let animFrame    = 0;
+const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
+
+function readConfig() {
+  try { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); } catch { return {}; }
+}
+
+function writeConfig(data) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
+}
+
+function getEsp32Host() {
+  return readConfig().esp32Host || 'onair.local';
+}
+
+let tray          = null;
+let aboutWindow   = null;
+let settingsWindow = null;
+let animInterval  = null;
+let animFrame     = 0;
 
 const state = new OnAirState({ onSignal: (inCall) => {
   sendSignal(inCall);
@@ -34,8 +50,8 @@ const state = new OnAirState({ onSignal: (inCall) => {
 
 function sendSignal(on) {
   const reqPath = on ? '/on' : '/off';
-  const req = http.request({ host: ESP32_IP, port: 80, path: reqPath, method: 'POST' });
-  req.on('error', () => {}); // silencioso — ESP32 pode não estar disponível ainda
+  const req = http.request({ host: getEsp32Host(), port: 80, path: reqPath, method: 'POST' });
+  req.on('error', () => {});
   req.end();
 }
 
@@ -56,7 +72,7 @@ function startAnimation() {
     const frameIdx = step < ICON_FRAMES.length ? step : totalSteps - step;
     tray.setImage(loadRetina(ICON_FRAMES[frameIdx]));
     animFrame++;
-  }, 120); // ~8fps
+  }, 120);
 }
 
 function stopAnimation() {
@@ -98,8 +114,9 @@ function buildMenu() {
       click: () => { state.setOverride(null);  tray.setContextMenu(buildMenu()); }
     },
     { type: 'separator' },
-    { label: 'About...', click: () => openAbout() },
-    { label: 'Quit',  click: () => app.quit() },
+    { label: 'Settings...', click: () => openSettings() },
+    { label: 'About...',    click: () => openAbout() },
+    { label: 'Quit',        click: () => app.quit() },
   ]);
 }
 
@@ -124,15 +141,52 @@ function openAbout() {
   aboutWindow.on('closed', () => { aboutWindow = null; });
 }
 
-// --- Detector (event-driven, persistent process) ---
+// --- Settings window ---
+
+function openSettings() {
+  if (settingsWindow) { settingsWindow.focus(); return; }
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 280,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: 'Settings',
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#2b2b2b',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'windows', 'settings-preload.js'),
+    },
+  });
+  settingsWindow.loadFile(path.join(__dirname, 'windows', 'settings.html'));
+  settingsWindow.on('closed', () => { settingsWindow = null; });
+}
+
+// --- IPC ---
+
+ipcMain.handle('get-config', () => ({ host: getEsp32Host() }));
+
+ipcMain.handle('save-config', (_, host) => {
+  writeConfig({ ...readConfig(), esp32Host: host });
+});
+
+ipcMain.handle('test-connection', (_, host) => testConnection(host));
+
+ipcMain.handle('scan-network', async (event) => {
+  return scanNetwork((pct) => {
+    event.sender.send('scan-progress', pct);
+  });
+});
+
+// --- Detector ---
 
 function startDetector() {
   const detector = spawn(DETECTOR);
-
   detector.stdout.on('data', (data) => {
     data.toString().trim().split('\n').forEach(line => state.onDetectorEvent(line));
   });
-
   detector.on('exit', () => {
     console.log('Detector terminou — a reiniciar em 2s...');
     setTimeout(startDetector, 2000);
@@ -143,12 +197,10 @@ function startDetector() {
 
 app.whenReady().then(() => {
   app.dock.hide();
-
   tray = new Tray(loadRetina(ICON_TEAL));
   tray.setContextMenu(buildMenu());
   updateTray(false);
-
   startDetector();
 });
 
-app.on('window-all-closed', () => {}); // manter vivo sem janelas
+app.on('window-all-closed', () => {});

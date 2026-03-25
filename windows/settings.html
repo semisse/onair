@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>On Air — Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #2b2b2b;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      padding: 24px;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #d4d4d4;
+      font-size: 13px;
+      padding: 6px 10px;
+      outline: none;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    input[type="text"]:focus { border-color: #666; }
+
+    button {
+      background: #3a3a3a;
+      border: 1px solid #555;
+      border-radius: 6px;
+      color: #d4d4d4;
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:hover   { background: #444; }
+    button:active  { background: #333; }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    button.primary {
+      background: #4a7aff;
+      border-color: #4a7aff;
+      color: #fff;
+    }
+    button.primary:hover { background: #5a88ff; }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #888;
+      min-height: 20px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+    }
+    .dot.ok      { background: #4caf50; }
+    .dot.error   { background: #f44336; }
+    .dot.testing { background: #ff9800; }
+
+    .scan-results {
+      margin-top: 10px;
+      display: none;
+    }
+
+    .scan-result-item {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .scan-result-item:hover { border-color: #666; }
+
+    .progress-bar {
+      height: 3px;
+      background: #1e1e1e;
+      border-radius: 2px;
+      margin-top: 10px;
+      display: none;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #4a7aff;
+      border-radius: 2px;
+      transition: width 0.2s;
+      width: 0%;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #3a3a3a;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>ESP32 Connection</h2>
+
+  <div class="row">
+    <input type="text" id="host" placeholder="onair.local or 192.168.1.x" />
+    <button id="btn-test">Test</button>
+    <button id="btn-scan">Scan</button>
+  </div>
+
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <span id="status-text">Not tested</span>
+  </div>
+
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <div class="scan-results" id="scan-results"></div>
+
+  <hr />
+
+  <div class="footer">
+    <button class="primary" id="btn-save">Save</button>
+  </div>
+
+  <script>
+    const hostInput   = document.getElementById('host');
+    const dot         = document.getElementById('dot');
+    const statusText  = document.getElementById('status-text');
+    const btnTest     = document.getElementById('btn-test');
+    const btnScan     = document.getElementById('btn-scan');
+    const btnSave     = document.getElementById('btn-save');
+    const scanResults = document.getElementById('scan-results');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill= document.getElementById('progress-fill');
+
+    function setStatus(type, text) {
+      dot.className = `dot ${type}`;
+      statusText.textContent = text;
+    }
+
+    function selectHost(host) {
+      hostInput.value = host;
+      scanResults.style.display = 'none';
+      setStatus('', 'Not tested');
+    }
+
+    // Load saved config
+    window.api.getConfig().then(({ host }) => {
+      hostInput.value = host;
+    });
+
+    // Test connection
+    btnTest.addEventListener('click', async () => {
+      const host = hostInput.value.trim();
+      if (!host) return;
+      setStatus('testing', 'Testing…');
+      btnTest.disabled = true;
+      const ok = await window.api.testConnection(host);
+      setStatus(ok ? 'ok' : 'error', ok ? 'Connected' : 'Not reachable');
+      btnTest.disabled = false;
+    });
+
+    // Scan network
+    btnScan.addEventListener('click', async () => {
+      btnScan.disabled = true;
+      btnTest.disabled = true;
+      scanResults.style.display = 'none';
+      progressBar.style.display = 'block';
+      progressFill.style.width = '0%';
+      setStatus('testing', 'Scanning network…');
+
+      window.api.onScanProgress(pct => {
+        progressFill.style.width = `${pct}%`;
+      });
+
+      const found = await window.api.scanNetwork();
+
+      progressBar.style.display = 'none';
+      btnScan.disabled = false;
+      btnTest.disabled = false;
+
+      if (found.length === 0) {
+        setStatus('error', 'No ESP32 found on the network');
+        return;
+      }
+
+      setStatus('ok', `Found ${found.length} device${found.length > 1 ? 's' : ''}`);
+      scanResults.innerHTML = found.map(h =>
+        `<div class="scan-result-item" data-host="${h}">
+          <span>${h}</span>
+          <span style="color:#888; font-size:11px">Use this →</span>
+        </div>`
+      ).join('');
+      scanResults.style.display = 'block';
+
+      scanResults.querySelectorAll('.scan-result-item').forEach(el => {
+        el.addEventListener('click', () => selectHost(el.dataset.host));
+      });
+    });
+
+    // Save
+    btnSave.addEventListener('click', async () => {
+      const host = hostInput.value.trim();
+      if (!host) return;
+      await window.api.saveConfig(host);
+      window.close();
+    });
+  </script>
+</body>
+</html>
