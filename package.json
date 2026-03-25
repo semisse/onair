@@ -1,6 +1,6 @@
 {
   "name": "onair",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "macOS menu bar app that turns on an ON AIR sign when you're on a Teams call",
   "main": "main.js",
   "author": "Today We Dream Tomorrow We Build",
@@ -25,7 +25,9 @@
       "native/check-mic",
       "package.json"
     ],
-    "asarUnpack": ["native/check-mic"],
+    "asarUnpack": [
+      "native/check-mic"
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "target": [
