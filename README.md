@@ -1,16 +1,21 @@
 # On Air
 
-A macOS menu bar app that detects when your microphone is in use and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi. Works with any app — Teams, Zoom, Google Meet, or anything else that uses the mic.
+![on air](assets/icon.png)
 
-![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) On a call
+A macOS menu bar app that detects when your microphone or camera is in use and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi. Works with any app — Teams, Zoom, Google Meet, Photo Booth, or anything else.
+
+![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) On a call &nbsp;·&nbsp; ![free](assets/icon-teal.png) Free
 
 ---
 
 ## How it works
 
-The app runs a persistent native process that registers a CoreAudio `AudioObjectAddPropertyListener` on the default input device — the same signal that triggers the orange mic indicator in the macOS menu bar.
+The app runs a persistent native Swift process that listens for two signals:
 
-When the mic activates it sends `POST /on` to the ESP32. When it stops it sends `POST /off`. The ESP32 drives a transistor that switches the LED sign's power. The response is instantaneous with zero CPU overhead in idle.
+- **Microphone** — CoreAudio `AudioObjectAddPropertyListener` on the default input device (the same signal that triggers the orange mic indicator in the macOS menu bar)
+- **Camera** — CoreMediaIO `CMIOObjectAddPropertyListener` on all connected video devices
+
+When either activates it sends `POST /on` to the ESP32. When both stop it sends `POST /off`. The ESP32 drives a transistor that switches the LED sign's power. The response is instantaneous with zero CPU overhead in idle.
 
 The menu bar icon animates while you're on a call. You can also force the sign on or off manually via the context menu, independently of call detection.
 
@@ -57,9 +62,9 @@ cd onair
 npm install
 ```
 
-### Build the mic detection binary
+### Build the native binary
 
-The app uses a small Swift binary to query CoreAudio — it only needs to be compiled once.
+The app uses a small Swift binary to monitor the mic and camera — it only needs to be compiled once.
 
 ```bash
 swiftc native/check-mic.swift -o native/check-mic
