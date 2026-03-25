@@ -25,6 +25,7 @@
       "native/check-mic",
       "package.json"
     ],
+    "asarUnpack": ["native/check-mic"],
     "mac": {
       "category": "public.app-category.utilities",
       "target": [

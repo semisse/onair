@@ -13,7 +13,9 @@ const ICON_FRAMES = Array.from({ length: 16 }, (_, i) =>
 const ICON_OFF  = path.join(__dirname, 'assets', 'icon-off.png');
 const ICON_TEAL = path.join(__dirname, 'assets', 'icon-teal.png');
 
-const DETECTOR  = path.join(__dirname, 'native', 'check-mic');
+const DETECTOR  = app.isPackaged
+  ? path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'check-mic')
+  : path.join(__dirname, 'native', 'check-mic');
 const ESP32_IP  = '192.168.1.100'; // configurar com o IP do ESP32
 
 let tray          = null;
