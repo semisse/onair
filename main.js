@@ -1,4 +1,4 @@
-const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, systemPreferences } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -150,8 +150,12 @@ function startDetector() {
 
 // --- App lifecycle ---
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   app.dock.hide();
+
+  // Pedir permissões de microfone e câmera ao macOS
+  await systemPreferences.askForMediaAccess('microphone');
+  await systemPreferences.askForMediaAccess('camera');
 
   tray = new Tray(loadRetina(ICON_TEAL));
   tray.setContextMenu(buildMenu());

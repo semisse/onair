@@ -28,7 +28,11 @@
     "mac": {
       "category": "public.app-category.utilities",
       "target": [{ "target": "dmg", "arch": ["universal"] }],
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "On Air needs microphone access to detect when you're on a call.",
+        "NSCameraUsageDescription": "On Air needs camera access to detect when your camera is active."
+      }
     },
     "dmg": {
       "title": "On Air"
