@@ -1,4 +1,4 @@
-const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain, powerMonitor } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
@@ -182,13 +182,16 @@ ipcMain.handle('scan-network', async (event) => {
 
 // --- Detector ---
 
+let detectorProcess = null;
+
 function startDetector() {
-  const detector = spawn(DETECTOR);
-  detector.stdout.on('data', (data) => {
+  detectorProcess = spawn(DETECTOR);
+  detectorProcess.stdout.on('data', (data) => {
     data.toString().trim().split('\n').forEach(line => state.onDetectorEvent(line));
   });
-  detector.on('exit', () => {
+  detectorProcess.on('exit', () => {
     console.log('Detector terminou — a reiniciar em 2s...');
+    detectorProcess = null;
     setTimeout(startDetector, 2000);
   });
 }
@@ -201,6 +204,10 @@ app.whenReady().then(() => {
   tray.setContextMenu(buildMenu());
   updateTray(false);
   startDetector();
+
+  powerMonitor.on('resume', () => {
+    if (detectorProcess) detectorProcess.kill();
+  });
 });
 
 app.on('window-all-closed', () => {});
