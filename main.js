@@ -176,7 +176,7 @@ ipcMain.handle('test-connection', (_, host) => testConnection(host));
 
 ipcMain.handle('scan-network', async (event) => {
   return scanNetwork((pct) => {
-    event.sender.send('scan-progress', pct);
+    if (!event.sender.isDestroyed()) event.sender.send('scan-progress', pct);
   });
 });
 

@@ -28,6 +28,7 @@ class OnAirState {
   // null = return to auto, true/false = force on/off.
   setOverride(value) {
     this.manualOverride = value;
+    if (value === null) this.lastState = null; // force re-emit so tray updates on return to auto
     this.apply(value === null ? this.detectorState : value);
   }
 }
