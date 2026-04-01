@@ -98,12 +98,12 @@ function buildMenu() {
     { label: 'ObviouslyBusy', enabled: false },
     { type: 'separator' },
     {
-      label: 'Turn On',
+      label: 'Busy',
       icon: menuIcon(ICON_FRAMES[0]),
       click: () => { state.setOverride(true);  tray.setContextMenu(buildMenu()); }
     },
     {
-      label: 'Turn Off',
+      label: 'Free',
       icon: menuIcon(ICON_TEAL),
       click: () => { state.setOverride(false); tray.setContextMenu(buildMenu()); }
     },
