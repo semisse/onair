@@ -155,6 +155,7 @@ After flashing, open the Serial Monitor at 115200 baud to find the assigned IP, 
 
 - [ ] Packaging as a standalone `.app`
 - [ ] End-user onboarding: WiFiManager captive portal + mDNS (`obviouslybusy.local`) + automatic firmware flashing via bundled esptool
+- [ ] USB mode: communicate with the ESP32 directly via USB serial, no WiFi or Bluetooth needed
 
 ---
 
