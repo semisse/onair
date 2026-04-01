@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const { OnAirState } = require('./src/state');
 const { testConnection, scanNetwork } = require('./src/discovery');
+const { onBleEvent } = require('./src/ble');
 
 if (process.env.NODE_ENV === 'development') {
   require('electron-reload')(__dirname, { electron: process.execPath });
@@ -74,11 +75,8 @@ function startBleBridge() {
   bleBridge = spawn(BLE_BRIDGE);
   bleBridge.stdout.on('data', (data) => {
     const line = data.toString().trim();
-    if (line === 'connected') {
-      console.log('BLE connected — re-sending state');
-      sendSignal(state.lastState ?? false);
-    }
     console.log('BLE:', line);
+    onBleEvent(line, state.lastState, sendSignal);
   });
   bleBridge.on('exit', () => {
     console.log('BLE bridge terminou — a reiniciar em 2s...');
@@ -183,7 +181,7 @@ function openSettings() {
   if (settingsWindow) { settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({
     width: 400,
-    height: 280,
+    height: 320,
     resizable: false,
     minimizable: false,
     maximizable: false,
