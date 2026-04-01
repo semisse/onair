@@ -25,10 +25,12 @@
       "windows/**",
       "assets/**",
       "native/check-mic",
+      "native/ble-bridge",
       "package.json"
     ],
     "asarUnpack": [
-      "native/check-mic"
+      "native/check-mic",
+      "native/ble-bridge"
     ],
     "mac": {
       "category": "public.app-category.utilities",
@@ -43,7 +45,8 @@
       "icon": "assets/icon.icns",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "ObviouslyBusy needs microphone access to detect when you're on a call.",
-        "NSCameraUsageDescription": "ObviouslyBusy needs camera access to detect when your camera is active."
+        "NSCameraUsageDescription": "ObviouslyBusy needs camera access to detect when your camera is active.",
+        "NSBluetoothAlwaysUsageDescription": "ObviouslyBusy uses Bluetooth to communicate with your Busy Buzz Light."
       }
     },
     "dmg": {

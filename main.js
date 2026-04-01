@@ -20,6 +20,10 @@ const DETECTOR = app.isPackaged
   ? path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'check-mic')
   : path.join(__dirname, 'native', 'check-mic');
 
+const BLE_BRIDGE = app.isPackaged
+  ? path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'ble-bridge')
+  : path.join(__dirname, 'native', 'ble-bridge');
+
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 
 function readConfig() {
@@ -34,11 +38,16 @@ function getEsp32Host() {
   return readConfig().esp32Host || 'obviouslybusy.local';
 }
 
-let tray          = null;
-let aboutWindow   = null;
+function getConnectionMode() {
+  return readConfig().connectionMode || 'wifi';
+}
+
+let tray           = null;
+let aboutWindow    = null;
 let settingsWindow = null;
-let animInterval  = null;
-let animFrame     = 0;
+let animInterval   = null;
+let animFrame      = 0;
+let bleBridge      = null;
 
 const state = new OnAirState({ onSignal: (inCall) => {
   sendSignal(inCall);
@@ -49,10 +58,37 @@ const state = new OnAirState({ onSignal: (inCall) => {
 // --- ESP32 ---
 
 function sendSignal(on) {
-  const reqPath = on ? '/on' : '/off';
-  const req = http.request({ host: getEsp32Host(), port: 80, path: reqPath, method: 'POST' });
-  req.on('error', () => {});
-  req.end();
+  if (getConnectionMode() === 'ble') {
+    if (bleBridge) bleBridge.stdin.write(on ? 'on\n' : 'off\n');
+  } else {
+    const reqPath = on ? '/on' : '/off';
+    const req = http.request({ host: getEsp32Host(), port: 80, path: reqPath, method: 'POST' });
+    req.on('error', () => {});
+    req.end();
+  }
+}
+
+// --- BLE Bridge ---
+
+function startBleBridge() {
+  bleBridge = spawn(BLE_BRIDGE);
+  bleBridge.stdout.on('data', (data) => {
+    const line = data.toString().trim();
+    if (line === 'connected') {
+      console.log('BLE connected — re-sending state');
+      sendSignal(state.lastState ?? false);
+    }
+    console.log('BLE:', line);
+  });
+  bleBridge.on('exit', () => {
+    console.log('BLE bridge terminou — a reiniciar em 2s...');
+    bleBridge = null;
+    setTimeout(startBleBridge, 2000);
+  });
+}
+
+function stopBleBridge() {
+  if (bleBridge) { bleBridge.kill(); bleBridge = null; }
 }
 
 // --- Tray ---
@@ -166,10 +202,12 @@ function openSettings() {
 
 // --- IPC ---
 
-ipcMain.handle('get-config', () => ({ host: getEsp32Host() }));
+ipcMain.handle('get-config', () => ({ host: getEsp32Host(), mode: getConnectionMode() }));
 
-ipcMain.handle('save-config', (_, host) => {
-  writeConfig({ ...readConfig(), esp32Host: host });
+ipcMain.handle('save-config', (_, { host, mode }) => {
+  writeConfig({ ...readConfig(), esp32Host: host, connectionMode: mode });
+  if (mode === 'ble') { stopBleBridge(); startBleBridge(); }
+  else                { stopBleBridge(); }
 });
 
 ipcMain.handle('test-connection', (_, host) => testConnection(host));
@@ -204,6 +242,7 @@ app.whenReady().then(() => {
   tray.setContextMenu(buildMenu());
   updateTray(false);
   startDetector();
+  if (getConnectionMode() === 'ble') startBleBridge();
 
   powerMonitor.on('resume', () => {
     if (detectorProcess) detectorProcess.kill();

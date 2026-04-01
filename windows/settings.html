@@ -62,6 +62,10 @@
     button:active  { background: #333; }
     button:disabled { opacity: 0.4; cursor: default; }
 
+    .mode-btn {
+      flex: 1;
+    }
+
     button.primary {
       background: #4a7aff;
       border-color: #4a7aff;
@@ -138,22 +142,36 @@
 <body>
   <h2>Connect your Busy Buzz Light</h2>
 
-  <div class="row">
-    <input type="text" id="host" placeholder="your device IP" />
-    <button id="btn-test">Test</button>
-    <button id="btn-scan">Scan</button>
+  <div class="row" style="margin-bottom: 16px;">
+    <button id="btn-wifi" class="mode-btn primary">Wi-Fi</button>
+    <button id="btn-ble"  class="mode-btn">Bluetooth</button>
   </div>
 
-  <div class="status">
-    <div class="dot" id="dot"></div>
-    <span id="status-text">Not tested</span>
+  <div id="wifi-section">
+    <div class="row">
+      <input type="text" id="host" placeholder="your device IP" />
+      <button id="btn-test">Test</button>
+      <button id="btn-scan">Scan</button>
+    </div>
+
+    <div class="status">
+      <div class="dot" id="dot"></div>
+      <span id="status-text">Not tested</span>
+    </div>
+
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="scan-results" id="scan-results"></div>
   </div>
 
-  <div class="progress-bar" id="progress-bar">
-    <div class="progress-fill" id="progress-fill"></div>
+  <div id="ble-section" style="display:none;">
+    <div class="status">
+      <div class="dot" id="ble-dot"></div>
+      <span id="ble-status-text">The app will scan for your device automatically via Bluetooth.</span>
+    </div>
   </div>
-
-  <div class="scan-results" id="scan-results"></div>
 
   <hr />
 
@@ -162,15 +180,32 @@
   </div>
 
   <script>
-    const hostInput   = document.getElementById('host');
-    const dot         = document.getElementById('dot');
-    const statusText  = document.getElementById('status-text');
-    const btnTest     = document.getElementById('btn-test');
-    const btnScan     = document.getElementById('btn-scan');
-    const btnSave     = document.getElementById('btn-save');
-    const scanResults = document.getElementById('scan-results');
-    const progressBar = document.getElementById('progress-bar');
-    const progressFill= document.getElementById('progress-fill');
+    const hostInput    = document.getElementById('host');
+    const dot          = document.getElementById('dot');
+    const statusText   = document.getElementById('status-text');
+    const btnTest      = document.getElementById('btn-test');
+    const btnScan      = document.getElementById('btn-scan');
+    const btnSave      = document.getElementById('btn-save');
+    const scanResults  = document.getElementById('scan-results');
+    const progressBar  = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const wifiSection  = document.getElementById('wifi-section');
+    const bleSection   = document.getElementById('ble-section');
+    const btnWifi      = document.getElementById('btn-wifi');
+    const btnBle       = document.getElementById('btn-ble');
+
+    let currentMode = 'wifi';
+
+    function setMode(mode) {
+      currentMode = mode;
+      wifiSection.style.display = mode === 'wifi' ? 'block' : 'none';
+      bleSection.style.display  = mode === 'ble'  ? 'block' : 'none';
+      btnWifi.className = 'mode-btn' + (mode === 'wifi' ? ' primary' : '');
+      btnBle.className  = 'mode-btn' + (mode === 'ble'  ? ' primary' : '');
+    }
+
+    btnWifi.addEventListener('click', () => setMode('wifi'));
+    btnBle.addEventListener('click',  () => setMode('ble'));
 
     function setStatus(type, text) {
       dot.className = `dot ${type}`;
@@ -184,8 +219,9 @@
     }
 
     // Load saved config
-    window.api.getConfig().then(({ host }) => {
+    window.api.getConfig().then(({ host, mode }) => {
       hostInput.value = host;
+      setMode(mode || 'wifi');
     });
 
     // Test connection
@@ -239,9 +275,13 @@
 
     // Save
     btnSave.addEventListener('click', async () => {
-      const host = hostInput.value.trim();
-      if (!host) return;
-      await window.api.saveConfig(host);
+      if (currentMode === 'wifi') {
+        const host = hostInput.value.trim();
+        if (!host) return;
+        await window.api.saveConfig({ host, mode: 'wifi' });
+      } else {
+        await window.api.saveConfig({ host: hostInput.value.trim(), mode: 'ble' });
+      }
       window.close();
     });
   </script>
