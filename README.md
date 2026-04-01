@@ -25,23 +25,29 @@ The menu bar icon animates while you're on a call. You can also force the sign o
 
 | Component | Details |
 |-----------|---------|
-| Sign | Any battery-powered ON AIR sign — tested with [this one](https://www.amazon.es/dp/B0C9ZD6GY6) |
 | Microcontroller | ESP32 NodeMCU WROOM-32 (USB-C) |
-| Transistor | NPN 2N2222 |
-| Resistor | 1 kΩ |
+| LEDs | 5mm red + green |
+| Resistors | 2× 220Ω |
+| Enclosure | 3D printed |
 
 ### Circuit
 
-The sign's original battery box is removed. The ESP32 is powered via USB and supplies 5 V to the sign through a transistor controlled by a GPIO pin.
+Two LEDs wired directly to GPIO pins — no transistor needed.
 
 ```
-[USB 5V power adapter]
-        │
-        └── USB-C → ESP32
-                    ├── 5V  ──── Collector 2N2222 ──── [Sign +]
-                    ├── GND ──────────────────────────── [Sign −]
-                    └── GPIO ── 1kΩ ── Base 2N2222
+ESP32
+  ├── GPIO4 ── 220Ω ── LED red   ── GND  (Busy)
+  └── GPIO5 ── 220Ω ── LED green ── GND  (Free)
 ```
+
+### LED behaviour
+
+| State | Red | Green |
+|-------|-----|-------|
+| Auto, not in a call | off | on |
+| Auto, in a call | on | off |
+| Override Busy | on | off |
+| Override Free | off | on |
 
 ---
 
@@ -107,22 +113,34 @@ Flash the following sketch via Arduino IDE. The ESP32 must be on the same Wi-Fi 
 #include <WiFi.h>
 #include <WebServer.h>
 
-const char* SSID     = "YOUR_NETWORK";
-const char* PASSWORD = "YOUR_PASSWORD";
-const int   LED_PIN  = 2; // change to your transistor GPIO
+const char* SSID      = "YOUR_NETWORK";
+const char* PASSWORD  = "YOUR_PASSWORD";
+const int   PIN_RED   = 4;
+const int   PIN_GREEN = 5;
 
 WebServer server(80);
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(PIN_RED,   OUTPUT);
+  pinMode(PIN_GREEN, OUTPUT);
+  // default: free
+  digitalWrite(PIN_RED,   LOW);
+  digitalWrite(PIN_GREEN, HIGH);
+
   WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED) delay(500);
   Serial.println(WiFi.localIP());
 
-  server.on("/on",   HTTP_POST, []{ digitalWrite(LED_PIN, HIGH); server.send(200); });
-  server.on("/off",  HTTP_POST, []{ digitalWrite(LED_PIN, LOW);  server.send(200); });
-  server.on("/ping", HTTP_GET,  []{ server.send(200, "application/json", "{\"device\":\"obviouslybusy\"}"); });
+  server.on("/on",   HTTP_POST, []{
+    digitalWrite(PIN_RED, HIGH); digitalWrite(PIN_GREEN, LOW); server.send(200);
+  });
+  server.on("/off",  HTTP_POST, []{
+    digitalWrite(PIN_RED, LOW); digitalWrite(PIN_GREEN, HIGH); server.send(200);
+  });
+  server.on("/ping", HTTP_GET, []{
+    server.send(200, "application/json", "{\"device\":\"obviouslybusy\"}");
+  });
   server.begin();
 }
 
