@@ -1,6 +1,6 @@
 {
   "name": "obviouslybusy",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "macOS menu bar app that turns on an ON AIR sign when you're on a Teams call",
   "main": "main.js",
   "author": "Today We Dream Tomorrow We Build",
