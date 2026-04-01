@@ -55,6 +55,17 @@ function sendSignal(on) {
   req.end();
 }
 
+let esp32WasReachable = null; // null = unknown (startup)
+
+async function watchEsp32() {
+  const reachable = await testConnection(getEsp32Host());
+  if (reachable && esp32WasReachable === false) {
+    console.log('ESP32 back online — re-sending state');
+    sendSignal(state.lastState ?? false);
+  }
+  esp32WasReachable = reachable;
+}
+
 // --- Tray ---
 
 function loadRetina(filePath) {
@@ -208,6 +219,9 @@ app.whenReady().then(() => {
   powerMonitor.on('resume', () => {
     if (detectorProcess) detectorProcess.kill();
   });
+
+  watchEsp32();
+  setInterval(watchEsp32, 10000);
 });
 
 app.on('window-all-closed', () => {});
