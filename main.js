@@ -221,7 +221,7 @@ app.whenReady().then(() => {
   });
 
   watchEsp32();
-  setInterval(watchEsp32, 60000);
+  setInterval(watchEsp32, 10000);
 });
 
 app.on('window-all-closed', () => {});
