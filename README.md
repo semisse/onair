@@ -1,10 +1,10 @@
-# On Air
+# ObviouslyBusy
 
-![on air](assets/icon.png)
+![icon](assets/icon.png)
 
-A macOS menu bar app that detects when your microphone or camera is in use and automatically turns on a physical **ON AIR** LED sign via an ESP32 over Wi-Fi. Works with any app — Teams, Zoom, Google Meet, Photo Booth, or anything else.
+A macOS menu bar app that detects when your microphone or camera is in use and automatically turns on a physical sign via an ESP32 over Wi-Fi. Works with any app — Teams, Zoom, Google Meet, or anything else.
 
-![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) On a call &nbsp;·&nbsp; ![free](assets/icon-teal.png) Free
+![off air](assets/icon-off.png) Idle &nbsp;·&nbsp; ![on air](assets/icon-on-0.png) Busy &nbsp;·&nbsp; ![free](assets/icon-teal.png) Free
 
 ---
 
@@ -15,7 +15,7 @@ The app runs a persistent native Swift process that listens for two signals:
 - **Microphone** — CoreAudio `AudioObjectAddPropertyListener` on the default input device (the same signal that triggers the orange mic indicator in the macOS menu bar)
 - **Camera** — CoreMediaIO `CMIOObjectAddPropertyListener` on all connected video devices
 
-When either activates it sends `POST /on` to the ESP32. When both stop it sends `POST /off`. The ESP32 drives a transistor that switches the LED sign's power. The response is instantaneous with zero CPU overhead in idle.
+When either activates it sends `POST /on` to the ESP32. When both stop it sends `POST /off`. The ESP32 drives a transistor that switches the sign's power. The response is instantaneous with zero CPU overhead in idle.
 
 The menu bar icon animates while you're on a call. You can also force the sign on or off manually via the context menu, independently of call detection.
 
@@ -25,7 +25,7 @@ The menu bar icon animates while you're on a call. You can also force the sign o
 
 | Component | Details |
 |-----------|---------|
-| LED sign | Any battery-powered ON AIR sign — tested with [this one](https://www.amazon.es/dp/B0C9ZD6GY6) |
+| Sign | Any battery-powered ON AIR sign — tested with [this one](https://www.amazon.es/dp/B0C9ZD6GY6) |
 | Microcontroller | ESP32 NodeMCU WROOM-32 (USB-C) |
 | Transistor | NPN 2N2222 |
 | Resistor | 1 kΩ |
@@ -52,13 +52,13 @@ The sign's original battery box is removed. The ESP32 is powered via USB and sup
 - macOS
 - Node.js ≥ 18
 - Arduino IDE (for the ESP32 firmware)
-- CH340 USB driver (for the ESP32 USB connection on older macOS)
+- CH340 USB driver (for the ESP32 USB connection on macOS)
 
 ### Install
 
 ```bash
-git clone https://github.com/semisse/onair
-cd onair
+git clone https://github.com/semisse/obviouslybusy
+cd obviouslybusy
 npm install
 ```
 
@@ -73,11 +73,7 @@ chmod +x native/check-mic
 
 ### Configure
 
-Edit `main.js` and set the IP address assigned to your ESP32 on your local network:
-
-```js
-const ESP32_IP = '192.168.1.100'; // replace with your ESP32's IP
-```
+Open Settings from the menu bar icon and enter the IP address of your ESP32. Use the **Scan** button to find it automatically on your local network.
 
 ### Run
 
@@ -94,9 +90,10 @@ The app lives in the menu bar with no dock icon. Right-click the icon to access 
 
 | Item | Description |
 |------|-------------|
-| **Turn On Air** | Force the sign on, regardless of call state |
-| **Turn Off Air** | Force the sign off, regardless of call state |
+| **Busy** | Force the sign on, regardless of call state |
+| **Free** | Force the sign off, regardless of call state |
 | **Auto** | Return to automatic detection (enabled when an override is active) |
+| **Settings…** | Configure ESP32 connection |
 | **About…** | App info |
 | **Quit** | Exit the app |
 
@@ -104,18 +101,42 @@ The app lives in the menu bar with no dock icon. Right-click the icon to access 
 
 ## ESP32 firmware
 
-> Work in progress.
+Flash the following sketch via Arduino IDE. The ESP32 must be on the same Wi-Fi network as your Mac.
 
-The firmware will run an HTTP server on port 80, respond to `POST /on` and `POST /off`, and drive the transistor via a GPIO pin.
+```cpp
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* SSID     = "YOUR_NETWORK";
+const char* PASSWORD = "YOUR_PASSWORD";
+const int   LED_PIN  = 2; // change to your transistor GPIO
+
+WebServer server(80);
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  WiFi.begin(SSID, PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) delay(500);
+  Serial.println(WiFi.localIP());
+
+  server.on("/on",   HTTP_POST, []{ digitalWrite(LED_PIN, HIGH); server.send(200); });
+  server.on("/off",  HTTP_POST, []{ digitalWrite(LED_PIN, LOW);  server.send(200); });
+  server.on("/ping", HTTP_GET,  []{ server.send(200, "application/json", "{\"device\":\"obviouslybusy\"}"); });
+  server.begin();
+}
+
+void loop() { server.handleClient(); }
+```
+
+After flashing, open the Serial Monitor at 115200 baud to find the assigned IP, then enter it in Settings.
 
 ---
 
 ## Roadmap
 
-- [ ] ESP32 firmware
-- [ ] UI to configure the ESP32 IP address (no code editing required)
 - [ ] Packaging as a standalone `.app`
-- [ ] Bluetooth BLE as an alternative to Wi-Fi — direct Mac ↔ ESP32 pairing, no IP configuration needed
+- [ ] End-user onboarding: WiFiManager captive portal + mDNS (`obviouslybusy.local`) + automatic firmware flashing via bundled esptool
 
 ---
 
