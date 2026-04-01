@@ -1,5 +1,5 @@
 {
-  "name": "onair",
+  "name": "obviouslybusy",
   "version": "0.1.2",
   "description": "macOS menu bar app that turns on an ON AIR sign when you're on a Teams call",
   "main": "main.js",
@@ -17,8 +17,8 @@
     "postversion": "git push && git push --follow-tags"
   },
   "build": {
-    "appId": "com.todaywedream.onair",
-    "productName": "On Air",
+    "appId": "com.todaywedream.obviouslybusy",
+    "productName": "ObviouslyBusy",
     "files": [
       "main.js",
       "src/**",
@@ -42,12 +42,12 @@
       ],
       "icon": "assets/icon.icns",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "On Air needs microphone access to detect when you're on a call.",
-        "NSCameraUsageDescription": "On Air needs camera access to detect when your camera is active."
+        "NSMicrophoneUsageDescription": "ObviouslyBusy needs microphone access to detect when you're on a call.",
+        "NSCameraUsageDescription": "ObviouslyBusy needs camera access to detect when your camera is active."
       }
     },
     "dmg": {
-      "title": "On Air"
+      "title": "ObviouslyBusy"
     }
   },
   "devDependencies": {

@@ -31,7 +31,7 @@ function writeConfig(data) {
 }
 
 function getEsp32Host() {
-  return readConfig().esp32Host || 'onair.local';
+  return readConfig().esp32Host || 'obviouslybusy.local';
 }
 
 let tray          = null;
@@ -86,7 +86,7 @@ function updateTray(inCall) {
     stopAnimation();
     tray.setImage(loadRetina(state.manualOverride === null ? ICON_OFF : ICON_TEAL));
   }
-  tray.setToolTip(inCall ? 'On Air' : state.manualOverride === null ? 'Auto' : 'Off Air');
+  tray.setToolTip(inCall ? 'ObviouslyBusy' : state.manualOverride === null ? 'Auto' : 'Off Air');
 }
 
 function menuIcon(filePath) {
@@ -95,15 +95,15 @@ function menuIcon(filePath) {
 
 function buildMenu() {
   return Menu.buildFromTemplate([
-    { label: 'On Air', enabled: false },
+    { label: 'ObviouslyBusy', enabled: false },
     { type: 'separator' },
     {
-      label: 'Turn On Air',
+      label: 'Turn On',
       icon: menuIcon(ICON_FRAMES[0]),
       click: () => { state.setOverride(true);  tray.setContextMenu(buildMenu()); }
     },
     {
-      label: 'Turn Off Air',
+      label: 'Turn Off',
       icon: menuIcon(ICON_TEAL),
       click: () => { state.setOverride(false); tray.setContextMenu(buildMenu()); }
     },
@@ -130,7 +130,7 @@ function openAbout() {
     resizable: false,
     minimizable: false,
     maximizable: false,
-    title: 'On Air',
+    title: 'ObviouslyBusy',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#2b2b2b',
     webPreferences: { nodeIntegration: false, contextIsolation: true },

@@ -22,7 +22,7 @@ function get(host, path, timeout) {
 async function testConnection(host) {
   try {
     const body = await get(host, '/ping', TIMEOUT_MS);
-    return JSON.parse(body).device === 'onair';
+    return JSON.parse(body).device === 'obviouslybusy';
   } catch {
     return false;
   }
@@ -43,7 +43,7 @@ function localSubnets() {
 
 async function scanNetwork(onProgress) {
   // 1. Try mDNS first — instant, no scan needed
-  if (await testConnection('onair.local')) return ['onair.local'];
+  if (await testConnection('obviouslybusy.local')) return ['obviouslybusy.local'];
 
   // 2. Scan all local subnets in batches
   const subnets = localSubnets();

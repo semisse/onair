@@ -42,7 +42,7 @@ function mockSubnet(subnet = '192.168.1') {
 
 describe('testConnection', () => {
   test('returns true when ESP32 responds with correct device id', async () => {
-    mockRequest({ body: '{"device":"onair"}' });
+    mockRequest({ body: '{"device":"obviouslybusy"}' });
     expect(await testConnection('192.168.1.50')).toBe(true);
   });
 
@@ -71,10 +71,10 @@ describe('testConnection', () => {
 
 describe('scanNetwork', () => {
   test('returns onair.local immediately if mDNS responds', async () => {
-    mockRequest({ body: '{"device":"onair"}' });
+    mockRequest({ body: '{"device":"obviouslybusy"}' });
     mockSubnet();
     const found = await scanNetwork();
-    expect(found).toEqual(['onair.local']);
+    expect(found).toEqual(['obviouslybusy.local']);
     // Should not scan the subnet — only one request made (mDNS)
     expect(http.request).toHaveBeenCalledTimes(1);
   });
@@ -91,7 +91,7 @@ describe('scanNetwork', () => {
         destroy:    jest.fn(),
       };
       const body = opts.host === TARGET || opts.host === 'onair.local' && false
-        ? '{"device":"onair"}'
+        ? '{"device":"obviouslybusy"}'
         : '{"device":"other"}';
       // mDNS fails, only TARGET responds correctly
       const responds = opts.host === TARGET;
