@@ -6,6 +6,9 @@ var gMicInUse      = false
 var gCameraInUse   = false
 var gAudioDeviceID = AudioDeviceID(kAudioObjectUnknown)
 
+// Tracks which camera device IDs already have listeners — prevents duplicate registration.
+var gRegisteredCameraIDs = Set<CMIODeviceID>()
+
 func emit() {
     print(gMicInUse || gCameraInUse ? "in_call" : "not_in_call")
     fflush(stdout)
@@ -34,6 +37,20 @@ func readMicInUse(deviceID: AudioDeviceID) -> Bool {
         mElement:  kAudioObjectPropertyElementMain)
     AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &value)
     return value > 0
+}
+
+func addMicListener(deviceID: AudioDeviceID) {
+    var addr = AudioObjectPropertyAddress(
+        mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+        mScope:    kAudioObjectPropertyScopeGlobal,
+        mElement:  kAudioObjectPropertyElementMain)
+    AudioObjectAddPropertyListener(deviceID, &addr, { _, _, _, _ -> OSStatus in
+        DispatchQueue.main.async {
+            gMicInUse = readMicInUse(deviceID: gAudioDeviceID)
+            emit()
+        }
+        return noErr
+    }, nil)
 }
 
 // MARK: - Camera (CoreMediaIO)
@@ -68,6 +85,26 @@ func isAnyCameraInUse() -> Bool {
     cameraDeviceIDs().contains { readCameraInUse(deviceID: $0) }
 }
 
+// Registers a kCMIODevicePropertyDeviceIsRunningSomewhere listener on any camera device
+// not yet tracked. Safe to call multiple times — skips already-registered IDs.
+func registerCameraListeners() {
+    for deviceID in cameraDeviceIDs() {
+        guard !gRegisteredCameraIDs.contains(deviceID) else { continue }
+        gRegisteredCameraIDs.insert(deviceID)
+        var addr = CMIOObjectPropertyAddress(
+            mSelector: CMIOObjectPropertySelector(kCMIODevicePropertyDeviceIsRunningSomewhere),
+            mScope:    CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
+            mElement:  CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
+        CMIOObjectAddPropertyListener(deviceID, &addr, { _, _, _, _ -> OSStatus in
+            DispatchQueue.main.async {
+                gCameraInUse = isAnyCameraInUse()
+                emit()
+            }
+            return noErr
+        }, nil)
+    }
+}
+
 // MARK: - Initial state
 
 gAudioDeviceID = defaultInputDevice()
@@ -76,36 +113,54 @@ gCameraInUse   = isAnyCameraInUse()
 
 // MARK: - Microphone listener
 
-var micAddr = AudioObjectPropertyAddress(
-    mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+addMicListener(deviceID: gAudioDeviceID)
+
+// MARK: - Default input device change listener
+//
+// Fires when the default mic changes (hotplug, sleep/wake). Registers a listener
+// on the new device and re-reads mic state.
+
+var defaultInputAddr = AudioObjectPropertyAddress(
+    mSelector: kAudioHardwarePropertyDefaultInputDevice,
     mScope:    kAudioObjectPropertyScopeGlobal,
     mElement:  kAudioObjectPropertyElementMain)
 
-AudioObjectAddPropertyListener(gAudioDeviceID, &micAddr, { _, _, _, _ -> OSStatus in
-    DispatchQueue.main.async {
-        gMicInUse = readMicInUse(deviceID: gAudioDeviceID)
-        emit()
-    }
-    return noErr
-}, nil)
-
-// MARK: - Camera listeners (one per device)
-
-for deviceID in cameraDeviceIDs() {
-    var camAddr = CMIOObjectPropertyAddress(
-        mSelector: CMIOObjectPropertySelector(kCMIODevicePropertyDeviceIsRunningSomewhere),
-        mScope:    CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
-        mElement:  CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
-    CMIOObjectAddPropertyListener(deviceID, &camAddr, { _, _, _, _ -> OSStatus in
+AudioObjectAddPropertyListener(AudioObjectID(kAudioObjectSystemObject), &defaultInputAddr,
+    { _, _, _, _ -> OSStatus in
         DispatchQueue.main.async {
+            let newDevice = defaultInputDevice()
+            if newDevice != kAudioObjectUnknown && newDevice != gAudioDeviceID {
+                gAudioDeviceID = newDevice
+                addMicListener(deviceID: newDevice)
+            }
+            gMicInUse = readMicInUse(deviceID: gAudioDeviceID)
+            emit()
+        }
+        return noErr
+    }, nil)
+
+// MARK: - Camera device list change listener
+//
+// Fires when CoreMediaIO re-enumerates devices — notably on system wake. Registers
+// listeners on any new device IDs and re-reads camera state.
+
+var devListAddr = CMIOObjectPropertyAddress(
+    mSelector: CMIOObjectPropertySelector(kCMIOHardwarePropertyDevices),
+    mScope:    CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
+    mElement:  CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
+
+CMIOObjectAddPropertyListener(CMIOObjectID(kCMIOObjectSystemObject), &devListAddr,
+    { _, _, _, _ -> OSStatus in
+        DispatchQueue.main.async {
+            registerCameraListeners()
             gCameraInUse = isAnyCameraInUse()
             emit()
         }
         return noErr
     }, nil)
-}
 
-// MARK: - Emit initial state and run forever
+// MARK: - Register initial camera listeners + emit
 
+registerCameraListeners()
 emit()
 RunLoop.main.run()
